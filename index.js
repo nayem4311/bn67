@@ -30,6 +30,8 @@ const addImagePrefix = (data) => {
 
 // Route to get the content of the JSON file with dynamic link
 app.get('/data', (req, res) => {
+  const { type, id } = req.query;  // Extract query parameters
+
   fs.readFile(dataFile, 'utf8', (err, data) => {
     if (err) return res.status(500).send('Error reading file');
 
@@ -40,8 +42,20 @@ app.get('/data', (req, res) => {
       return res.status(500).send('Error parsing JSON');
     }
 
-    const updatedData = addImagePrefix(jsonData);
-    res.json(updatedData);
+    let filteredData = addImagePrefix(jsonData);
+
+    // Filter data based on query parameters
+    if (type) {
+      if (type === 'banners') {
+        filteredData.banners = filteredData.banners.filter(banner => !id || banner.ref_image === id);
+      } else if (type === 'announcements') {
+        filteredData.announcements = filteredData.announcements.filter(announcement => !id || announcement.ref_image === id);
+      } else {
+        return res.status(400).send('Invalid type parameter');
+      }
+    }
+
+    res.json(filteredData);
   });
 });
 
