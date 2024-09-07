@@ -15,23 +15,50 @@ app.use(bodyParser.json());
 const addImagePrefix = (data) => {
   const prefix = 'https://dl.dir.freefiremobile.com/common/Local/BD/Splashanno/';
   
-  // Add prefix to ref images in banners
-  data.banners.forEach(banner => {
-    banner.refImage = `${prefix}${banner.ref_image}`;
-  });
-  
-  // Add prefix to ref images in announcements
-  data.announcements.forEach(announcement => {
-    announcement.refImage = `${prefix}${announcement.ref_image}`;
+  data.forEach(category => {
+    category.events.forEach(event => {
+      event.ref_image = `${prefix}${event.ref_image}`;
+    });
   });
 
   return data;
 };
 
+// Function to categorize events based on current date
+const categorizeEvents = (data) => {
+  const now = new Date();
+
+  const categories = {
+    upcoming: [],
+    ongoing: [],
+    past: []
+  };
+
+  data.forEach(category => {
+    category.events.forEach(event => {
+      const start = new Date(event.event_start);
+      const end = new Date(event.banner_end_time);
+
+      if (now < start) {
+        categories.upcoming.push(event);
+      } else if (now >= start && now <= end) {
+        categories.ongoing.push(event);
+      } else {
+        categories.past.push(event);
+      }
+    });
+  });
+
+  return [
+    { type: 'upcoming', events: categories.upcoming },
+    { type: 'ongoing', events: categories.ongoing },
+    { type: 'past', events: categories.past },
+    { type: 'announcements', events: data.find(cat => cat.type === 'announcements').events }
+  ];
+};
+
 // Route to get the content of the JSON file with dynamic link
 app.get('/data', (req, res) => {
-  const { type, id } = req.query;  // Extract query parameters
-
   fs.readFile(dataFile, 'utf8', (err, data) => {
     if (err) return res.status(500).send('Error reading file');
 
@@ -42,20 +69,9 @@ app.get('/data', (req, res) => {
       return res.status(500).send('Error parsing JSON');
     }
 
-    let filteredData = addImagePrefix(jsonData);
-
-    // Filter data based on query parameters
-    if (type) {
-      if (type === 'banners') {
-        filteredData.banners = filteredData.banners.filter(banner => !id || banner.ref_image === id);
-      } else if (type === 'announcements') {
-        filteredData.announcements = filteredData.announcements.filter(announcement => !id || announcement.ref_image === id);
-      } else {
-        return res.status(400).send('Invalid type parameter');
-      }
-    }
-
-    res.json(filteredData);
+    const updatedData = addImagePrefix(jsonData);
+    const categorizedData = categorizeEvents(updatedData);
+    res.json(categorizedData);
   });
 });
 
