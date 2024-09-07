@@ -1,0 +1,67 @@
+{
+    "banners": [
+      {
+        "ref_image": "1750x1070_dinoring_bn.jpg",
+        "event_name": "Dino Ring: 2D DINO x CHICKEN SUIT",
+        "event_start": "2024-09-08T04:00:00",
+        "banner_end_time": "2024-09-09T07:29:59"
+      },
+      {
+        "ref_image": "1750x1070_txcoff1z1_bn.jpg",
+        "event_name": "Moco Store: THUNDERBOOM x CLAWS OF FURY FISTS",
+        "event_start": "2024-09-07T04:00:00",
+        "banner_end_time": "2024-09-08T07:29:59"
+      },
+      {
+        "ref_image": "1750x1070ke1lly1_bn.jpg",
+        "event_name": "OB46 Kelly Show",
+        "event_start": "2024-09-07T04:00:00",
+        "banner_end_time": "2024-09-08T07:29:59"
+      },
+      {
+        "ref_image": "1750x1070_GNEGN_bn.jpg",
+        "event_name": "Explore Gloo Nova",
+        "event_start": "2024-09-09T04:00:00",
+        "banner_end_time": "2024-09-10T07:29:59"
+      },
+      {
+        "ref_image": "1750x1070_MMRIN1G_bn.jpg",
+        "event_name": "AN94 x MP5 Ring: BOLT X LAVA*",
+        "event_start": "2024-09-10T04:00:00",
+        "banner_end_time": "2024-09-11T07:29:59"
+      },
+      {
+        "ref_image": "1750x1070gl1oo_bn.jpg",
+        "event_name": "Gloo Nova Special Interface Promo",
+        "event_start": "2024-09-08T04:00:00",
+        "banner_end_time": "2024-09-09T07:29:59"
+      },
+      {
+        "ref_image": "1750x1070_txcofflastday_bn.jpg",
+        "event_name": "Moco Store: THUNDERBOOM x CLAWS OF FURY FISTS - Last Day Banners",
+        "event_start": "2024-09-09T04:00:00",
+        "banner_end_time": "2024-09-10T01:29:59"
+      },
+      {
+        "ref_image": "1750x1070gl14oo_bn.jpg",
+        "event_name": "Gloo Nova Special Interface Promo",
+        "event_start": "2024-09-10T04:00:00",
+        "banner_end_time": "2024-09-11T07:29:59"
+      }
+    ],
+    "announcements": [
+      {
+        "ref_image": "1400x700_bn.jpg",
+        "title": "PLAY GLOO NOVA",
+        "event_start": "2024-09-04T09:30:00",
+        "banner_end_time": "2024-09-23T01:29:59"
+      },
+      {
+        "ref_image": "1400x700_OB46SA_bn.jpg",
+        "title": "OB46 IS LIVE",
+        "event_start": "2024-09-04T09:30:00",
+        "banner_end_time": "2024-09-09T01:29:59"
+      }
+    ]
+  }
+  
