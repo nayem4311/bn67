@@ -7,6 +7,8 @@ const bodyParser = require('body-parser');
 const app = express();
 const dataFile = path.join(__dirname, 'data.json');
 
+let cachedData = null;
+
 // Enable CORS
 app.use(cors());
 app.use(bodyParser.json());
@@ -15,63 +17,94 @@ app.use(bodyParser.json());
 const addImagePrefix = (data) => {
   const prefix = 'https://dl.dir.freefiremobile.com/common/Local/BD/Splashanno/';
   
-  data.forEach(category => {
-    category.events.forEach(event => {
-      event.ref_image = `${prefix}${event.ref_image}`;
+  // Check if data has the expected structure
+  if (!data.upcoming || !data.ongoing || !data.past || !data.announcements) {
+    throw new Error('Data is missing expected structure');
+  }
+
+  // Add prefix to upcoming, ongoing, and past banners if ref_image exists
+  const categories = ['upcoming', 'ongoing', 'past'];
+  categories.forEach(category => {
+    data[category].forEach(item => {
+      if (item.ref_image) {
+        item.refImage = `${prefix}${item.ref_image}`;
+      }
     });
+  });
+
+  // Add prefix to announcements if ref_image exists
+  data.announcements.forEach(announcement => {
+    if (announcement.ref_image) {
+      announcement.refImage = `${prefix}${announcement.ref_image}`;
+    }
   });
 
   return data;
 };
 
-// Function to categorize events based on current date
-const categorizeEvents = (data) => {
-  const now = new Date();
+// Function to get data with caching
+const getData = (callback) => {
+  if (cachedData) {
+    return callback(null, cachedData);
+  }
 
-  const categories = {
-    upcoming: [],
-    ongoing: [],
-    past: []
-  };
-
-  data.forEach(category => {
-    category.events.forEach(event => {
-      const start = new Date(event.event_start);
-      const end = new Date(event.banner_end_time);
-
-      if (now < start) {
-        categories.upcoming.push(event);
-      } else if (now >= start && now <= end) {
-        categories.ongoing.push(event);
-      } else {
-        categories.past.push(event);
-      }
-    });
+  fs.readFile(dataFile, 'utf8', (err, data) => {
+    if (err) return callback(err);
+    try {
+      cachedData = JSON.parse(data);
+      console.log('Data read from file:', cachedData); // Add this line
+      return callback(null, cachedData);
+    } catch (parseErr) {
+      return callback(parseErr);
+    }
   });
-
-  return [
-    { type: 'upcoming', events: categories.upcoming },
-    { type: 'ongoing', events: categories.ongoing },
-    { type: 'past', events: categories.past },
-    { type: 'announcements', events: data.find(cat => cat.type === 'announcements').events }
-  ];
 };
 
-// Route to get the content of the JSON file with dynamic link
+// Route to get categorized events with optional query parameter
 app.get('/data', (req, res) => {
-  fs.readFile(dataFile, 'utf8', (err, data) => {
+  const query = req.query.q ? req.query.q.toLowerCase() : '';
+
+  getData((err, data) => {
     if (err) return res.status(500).send('Error reading file');
 
-    let jsonData;
     try {
-      jsonData = JSON.parse(data);
-    } catch (parseErr) {
-      return res.status(500).send('Error parsing JSON');
-    }
+      const processedData = addImagePrefix(data);
 
-    const updatedData = addImagePrefix(jsonData);
-    const categorizedData = categorizeEvents(updatedData);
-    res.json(categorizedData);
+      if (!query) {
+        return res.json(processedData);
+      }
+
+      // If user searches for a category (upcoming, ongoing, or past)
+      if (['upcoming', 'ongoing', 'past'].includes(query)) {
+        const categoryEvents = processedData[query] || [];
+        return res.json({ type: query, events: categoryEvents });
+      }
+
+      // Otherwise, filter events by name across all categories
+      const filteredData = Object.keys(processedData).reduce((result, category) => {
+        if (category === 'announcements') {
+          const filteredAnnouncements = processedData[category].filter(item => 
+            item.title && item.title.toLowerCase().includes(query)
+          );
+          result[category] = filteredAnnouncements;
+        } else {
+          const filteredEvents = processedData[category].filter(item => 
+            item.event_name && item.event_name.toLowerCase().includes(query)
+          );
+          result[category] = filteredEvents;
+        }
+        return result;
+      }, {});
+
+      // If no events or announcements match the query, return all data
+      if (Object.values(filteredData).every(arr => arr.length === 0)) {
+        return res.json(processedData);
+      }
+
+      res.json(filteredData);
+    } catch (prefixErr) {
+      res.status(500).send(`Error processing data: ${prefixErr.message}`);
+    }
   });
 });
 
@@ -85,6 +118,7 @@ app.post('/update-data', (req, res) => {
 
   fs.writeFile(dataFile, JSON.stringify(newData, null, 2), 'utf8', (err) => {
     if (err) return res.status(500).send('Error writing file');
+    cachedData = newData; // Update the cache
     res.send('Data updated successfully');
   });
 });
@@ -96,6 +130,7 @@ app.get('/admin', (req, res) => {
 
 module.exports = app;  // Export the app for Vercel
 
+// Set port for the server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
