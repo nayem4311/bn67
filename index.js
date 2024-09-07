@@ -13,33 +13,22 @@ let cachedData = null;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Function to dynamically add the prefix to ref images
-const addImagePrefix = (data) => {
+// Function to dynamically add the prefix to ref images and image numbers
+const addImagePrefixAndNumbers = (data) => {
   const prefix = 'https://dl.dir.freefiremobile.com/common/Local/BD/Splashanno/';
   
-  // Check if data has the expected structure
-  if (!data.upcoming || !data.ongoing || !data.past || !data.announcements) {
-    throw new Error('Data is missing expected structure');
-  }
-
-  // Add prefix to upcoming, ongoing, and past banners if ref_image exists
-  const categories = ['upcoming', 'ongoing', 'past'];
-  categories.forEach(category => {
-    data[category].forEach(item => {
-      if (item.ref_image) {
-        item.refImage = `${prefix}${item.ref_image}`;
-      }
-    });
-  });
-
-  // Add prefix to announcements if ref_image exists
-  data.announcements.forEach(announcement => {
-    if (announcement.ref_image) {
-      announcement.refImage = `${prefix}${announcement.ref_image}`;
+  // We assume the data is now a flat array (since you're removing the categories)
+  const allItems = Array.isArray(data) ? data : [];  // Ensure data is an array
+  
+  // Add prefix and assign image number
+  allItems.forEach((item, index) => {
+    if (item.ref_image) {
+      item.refImage = `${prefix}${item.ref_image}`;
+      item.imageNumber = index + 1;  // Assigning image number based on position
     }
   });
 
-  return data;
+  return allItems;
 };
 
 // Function to get data with caching
@@ -52,7 +41,7 @@ const getData = (callback) => {
     if (err) return callback(err);
     try {
       cachedData = JSON.parse(data);
-      console.log('Data read from file:', cachedData); // Add this line
+      console.log('Data read from file:', cachedData); // Debugging log
       return callback(null, cachedData);
     } catch (parseErr) {
       return callback(parseErr);
@@ -60,44 +49,25 @@ const getData = (callback) => {
   });
 };
 
-// Route to get categorized events with optional query parameter
+// Route to get events with optional query parameter based on image number
 app.get('/data', (req, res) => {
-  const query = req.query.q ? req.query.q.toLowerCase() : '';
+  const query = req.query.q ? parseInt(req.query.q) : null;
 
   getData((err, data) => {
     if (err) return res.status(500).send('Error reading file');
 
     try {
-      const processedData = addImagePrefix(data);
+      const processedData = addImagePrefixAndNumbers(data);
 
       if (!query) {
-        return res.json(processedData);
+        return res.json(processedData);  // Return all data if no query
       }
 
-      // If user searches for a category (upcoming, ongoing, or past)
-      if (['upcoming', 'ongoing', 'past'].includes(query)) {
-        const categoryEvents = processedData[query] || [];
-        return res.json({ type: query, events: categoryEvents });
-      }
+      // Filter by image number
+      const filteredData = processedData.filter(item => item.imageNumber === query);
 
-      // Otherwise, filter events by name across all categories
-      const filteredData = Object.keys(processedData).reduce((result, category) => {
-        if (category === 'announcements') {
-          const filteredAnnouncements = processedData[category].filter(item => 
-            item.title && item.title.toLowerCase().includes(query)
-          );
-          result[category] = filteredAnnouncements;
-        } else {
-          const filteredEvents = processedData[category].filter(item => 
-            item.event_name && item.event_name.toLowerCase().includes(query)
-          );
-          result[category] = filteredEvents;
-        }
-        return result;
-      }, {});
-
-      // If no events or announcements match the query, return all data
-      if (Object.values(filteredData).every(arr => arr.length === 0)) {
+      // If no data matches the query, return all data
+      if (filteredData.length === 0) {
         return res.json(processedData);
       }
 
@@ -106,26 +76,6 @@ app.get('/data', (req, res) => {
       res.status(500).send(`Error processing data: ${prefixErr.message}`);
     }
   });
-});
-
-// Admin route to update the content of the JSON file
-app.post('/update-data', (req, res) => {
-  const newData = req.body;
-
-  if (!newData) {
-    return res.status(400).send('Content is required');
-  }
-
-  fs.writeFile(dataFile, JSON.stringify(newData, null, 2), 'utf8', (err) => {
-    if (err) return res.status(500).send('Error writing file');
-    cachedData = newData; // Update the cache
-    res.send('Data updated successfully');
-  });
-});
-
-// Serve the admin page
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 module.exports = app;  // Export the app for Vercel
